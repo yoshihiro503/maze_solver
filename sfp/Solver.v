@@ -4,6 +4,7 @@ Require Import Sumbool.
 
 Parameters maze node : Set.
 Parameter node_dec : forall (x y: node), {x = y} + {x <> y}.
+Parameter node_dec2 : forall (x y: node), {x = y} + {x <> y}.
 Parameters start goal : node.
 Parameter next : node -> list node.
 Definition is_next y x := In y (next x).
@@ -164,4 +165,4 @@ CoFixpoint accessibles_aux (p : list path) : Streams.Stream (list path) :=
 Definition accessibles_st (x : node) : Streams.Stream (list path) := accessibles_aux (PUnit x :: nil).
 
 Definition goals :=
-  Streams.map (filter_dec (fun p => node_dec goal (endof p))) @@ accessibles_st start.
+  Streams.map (filter_dec (fun p => node_dec2 goal (endof p))) @@ accessibles_st start.
