@@ -12,6 +12,8 @@ let string_of_path m path =
 
 let _ =
   let rec loop i gs =
+    print_endline ("\n===");
+    print_endline (!%"=LOOP %d:" i);
     match gs with
     | lazy (Cons ([], xs)) ->
 	loop (i+1) xs

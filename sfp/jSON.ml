@@ -30,6 +30,21 @@ let show =
   in
   show_aux 1
 
+let to_string =
+  let rec show_aux depth = function
+    | String s -> !%"\"%s\"" s
+    | Number x -> !%"%f" x
+    | Object fs ->
+	let indent = String.make depth '\t' in
+	"{\n"^ indent^ slist (",\n"^ indent) (fun (k,v) ->
+	  !%"\"%s\":%s" k (show_aux (depth+1) v)) fs^"}"
+    | Array xs -> "[" ^slist "," (show_aux depth) xs ^ "]"
+    | Bool true -> "true"
+    | Bool false -> "false"
+    | Null -> "null"
+  in
+  show_aux 1
+
 let getf field t =
   match t with
   | Object o ->
@@ -38,30 +53,30 @@ let getf field t =
       end
   | _ -> raise (JSON_NotObject t)
       
-let to_bool = function
+let as_bool = function
   | Bool true -> true
   | Bool false -> false
-  | v -> raise (JSON_CastErr ("to_bool:" ^ show v))
+  | v -> raise (JSON_CastErr ("as_bool:" ^ show v))
 
-let to_object = function
+let as_object = function
   | Object obj -> obj
-  | v -> raise (JSON_CastErr ("to_object:" ^ show v))
+  | v -> raise (JSON_CastErr ("as_object:" ^ show v))
 
-let to_float = function
+let as_float = function
   | Number f -> f
-  | v -> raise (JSON_CastErr ("to_float:" ^ show v))
+  | v -> raise (JSON_CastErr ("as_float:" ^ show v))
 
-let to_string = function
+let as_string = function
   | String s -> s
-  | v -> raise (JSON_CastErr ("to_string:" ^ show v))
+  | v -> raise (JSON_CastErr ("as_string:" ^ show v))
 
-let to_list = function
+let as_list = function
   | Array l -> l
-  | v -> raise (JSON_CastErr ("to_list:" ^ show v))
+  | v -> raise (JSON_CastErr ("as_list:" ^ show v))
 
-let to_int = function
+let as_int = function
   | Number f -> int_of_float f
-  | v -> raise (JSON_CastErr ("to_int:" ^ show v))
+  | v -> raise (JSON_CastErr ("as_int:" ^ show v))
 
 
 (*parser*)

@@ -11,8 +11,9 @@ let parse_input () =
   let twid = read_line() in
   prerr_string "password: "; flush stderr;
   let ps = read_line() in
-  print_endline "";
+  prerr_endline "";
   print_endline ("parsed: target=@"^gl);
+  prerr_endline ("parsed: target=@"^gl);
   { id=twid; pass=ps; start=twid; goal=gl}
     
 let snode node = "@"^node
@@ -55,16 +56,17 @@ let wget ?(user="") ?(password="") url : string =
 let followers node : node list =
 (*  let url = "twitter.com/statuses/followers.json?screen_name="^node in*)
   let url = "twitter.com/statuses/friends.json?screen_name="^node in
+  Unix.sleep 25;
   let r = JSON.parse @@ wget ~user:m.id ~password:m.pass url in
   let screen_name obj =
 (*    JSON.getf "user" obj
       +>*)
     JSON.getf "screen_name" obj
-      +> JSON.to_string
+      +> JSON.as_string
   in
   List.fold_left (fun store node ->
     try screen_name node :: store with _ -> store)
-    [] @@ JSON.to_list r
+    [] @@ JSON.as_list r
 
 let next : node -> node list 
     = fun node ->
@@ -93,5 +95,21 @@ let memoise (f : 'a -> 'b) =
       let y = f x in
       Hashtbl.add tbl x y;
       y
-	  
-let next = memoise next
+
+let nmemoise (f : 'a -> 'b) =
+  let tbl : ('a, 'b) Nethash.t =
+    Nethash.create "maze01"
+      (JSON.as_string, fun s -> JSON.String s)
+      ((fun j -> JSON.as_list j
+	  +> List.map JSON.as_string),
+       (fun ss -> JSON.Array (List.map (fun s -> JSON.String s) ss)))
+  in
+  fun x ->
+    match Nethash.get tbl x with
+    | Some y -> y
+    | None ->
+	let y = f x in
+	Nethash.add tbl x y;
+	y
+
+let next = nmemoise next
