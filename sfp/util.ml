@@ -8,6 +8,8 @@ let const c = fun _ -> c
 let (!%) = Printf.sprintf
 let (!$) x = Lazy.force x
 
+let puts s = print_endline s; prerr_endline s
+
 let si = string_of_int
 let string1 = String.make 1
 let slist delim f xs = String.concat delim @@ List.map f xs

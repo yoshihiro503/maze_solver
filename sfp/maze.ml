@@ -1,20 +1,22 @@
 open Util
 open JSON
+open Wget
 
 type node = string
 type t = { id: string; pass: string; start: node; goal: node}
 
 let parse_input () =
-  prerr_string "target: @"; flush stderr;
-  let gl = read_line() in
   prerr_string "your id: @"; flush stderr;
   let twid = read_line() in
   prerr_string "password: "; flush stderr;
   let ps = read_line() in
+  prerr_string "start: @"; flush stderr;
+  let st = read_line() in
+  prerr_string "target: @"; flush stderr;
+  let gl = read_line() in
   prerr_endline "";
-  print_endline ("parsed: target=@"^gl);
-  prerr_endline ("parsed: target=@"^gl);
-  { id=twid; pass=ps; start=twid; goal=gl}
+  puts ("parsed: target=@"^gl);
+  { id=twid; pass=ps; start=st; goal=gl}
     
 let snode node = "@"^node
 let m = parse_input ()
@@ -22,16 +24,6 @@ let node_dec n1 n2 =
   print_endline (!%"node_dec '%s' '%s' : %b" n1 n2 (n1=n2));
   n1=n2
 
-(*
-let get : t -> node -> char
-    = fun m (i,j) -> m.(j).(i)
-let set : t -> node -> char -> unit
-    = fun m (i,j) c -> m.(j).(i) <- c
-let sidx (i,j) =
-  si i ^ "," ^ si j
-*)
-(*let width, height = (Array.length m.(0), Array.length m)*)
-    
 let start : node
     = m.start
 let goal : node
@@ -44,6 +36,7 @@ let ch = in_channel_of_descr fd in
 read_all ch
 *)
 
+(*
 let wget ?(user="") ?(password="") url : string =
   let query =
     !%"wget --user=\"%s\" --password=\"%s\" %s -O -" user password url
@@ -51,34 +44,46 @@ let wget ?(user="") ?(password="") url : string =
   let ch = Unix.open_process_in query in
   let lines = value @@ tee (fun _ -> close_in ch) @@ maybe read_all ch in
   slist "\n" id lines
+*)
 
-
-let followers node : node list =
-(*  let url = "twitter.com/statuses/followers.json?screen_name="^node in*)
-  let url = "twitter.com/statuses/friends.json?screen_name="^node in
-  Unix.sleep 25;
-  let r = JSON.parse @@ wget ~user:m.id ~password:m.pass url in
-  let screen_name obj =
-(*    JSON.getf "user" obj
-      +>*)
-    JSON.getf "screen_name" obj
-      +> JSON.as_string
+let merge l1 l2 =
+  let rec iter store = function
+    | [] -> store
+    | x::xs -> iter
+	  (if List.mem x store then store else x :: store) xs
   in
-  List.fold_left (fun store node ->
-    try screen_name node :: store with _ -> store)
-    [] @@ JSON.as_list r
+  iter l2 l1
+
+let friends node : node list =
+(*  let url = "twitter.com/statuses/followers.json?screen_name="^node in*)
+  let rec loop total cursor =
+    let url = !%"twitter.com/statuses/friends.json?screen_name=%s&cursor=%s" node cursor in
+    puts "sleep";
+    Unix.sleep 30;
+    let r = JSON.parse @@ Wget.wget ~user:m.id ~password:m.pass url in
+    let screen_name obj =
+      JSON.getf "screen_name" obj
+	+> JSON.as_string
+    in
+    let fs = List.fold_left (fun store node ->
+      try screen_name node :: store with _ -> store)
+	[] @@ JSON.as_list (JSON.getf "users" r)
+    in
+    let next_cursor =
+      JSON.getf "next_cursor_str" r
+	+> JSON.as_string
+    in
+    let total' = merge fs total in
+    if List.length fs < 100 then total'
+    else loop (total') (next_cursor)
+  in
+  loop [] "-1"
 
 let next : node -> node list 
     = fun node ->
-      try
-  let fs = followers node in
-  prerr_endline (!%"next(%s) = [%s]" node (slist "," id fs));
-  print_endline (!%"next(%s) = [%s]" node (slist "," id fs));
-  fs
-      with
-      | e ->
-	  print_endline ("ERR:" ^ Printexc.to_string e);
-	  []
+      let fs = friends node in
+      puts (!%"next(%s) = [%s]" node (slist "," id fs));
+      fs
 (*
       match node with
       | "yoshihiro503" -> ["mzp"; "shimomura1004"; "keigoi"]
@@ -96,20 +101,31 @@ let memoise (f : 'a -> 'b) =
       Hashtbl.add tbl x y;
       y
 
-let nmemoise (f : 'a -> 'b) =
-  let tbl : ('a, 'b) Nethash.t =
-    Nethash.create "maze01"
-      (JSON.as_string, fun s -> JSON.String s)
-      ((fun j -> JSON.as_list j
-	  +> List.map JSON.as_string),
-       (fun ss -> JSON.Array (List.map (fun s -> JSON.String s) ss)))
+
+let nmemoise (f : 'a -> 'b) tblid serialize deserialize =
+  let tbl : ('b) Netshash.t =
+    Netshash.create tblid serialize deserialize
   in
   fun x ->
-    match Nethash.get tbl x with
-    | Some y -> y
+    match Netshash.get tbl x with
+    | Some (_, y) -> y
     | None ->
 	let y = f x in
-	Nethash.add tbl x y;
+	Netshash.add tbl x y;
 	y
 
-let next = nmemoise next
+let delim = Str.regexp " "
+
+let next = nmemoise next "tbl02"
+    (fun ss -> !%"%d %s" (List.length ss) @@ slist " " id ss)
+    (fun s ->
+      match Str.split delim s with
+      | n :: ss -> ss
+      | [] -> failwith "mustnothappen")
+
+let next n =
+  try
+    memoise next n
+  with
+  | e -> print_endline ("ERR:" ^ Printexc.to_string e);
+      []

@@ -6,9 +6,14 @@ let rec path_iter f = function
   | PUnit x -> f x
   | PCons (x, p) -> f x; path_iter f p
 
+let rec path_foldleft f y = function
+  | PUnit x -> f y x
+  | PCons (x,p) -> path_foldleft f (f y x) p
+
 let string_of_path m path =
-  path_iter (fun node -> print_string (!%" - %s" (snode node))) path;
-  ""
+  slist " -> " id (path_foldleft (fun store n -> n :: store) [] path)
+(*  path_iter (fun node -> print_string (!%" - %s" (snode node))) path;
+  ""*)
 
 let _ =
   let rec loop i gs =

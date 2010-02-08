@@ -159,7 +159,7 @@ CoFixpoint from n := Streams.Cons n (from (S n)).
 
 CoFixpoint accessibles_aux (p : list path) : Streams.Stream (list path) :=
     let p' := div_equiv path_equiv_dec @@ (flat_map expand p) in
-    Streams.Cons p (accessibles_aux p').
+    Streams.Cons p' (accessibles_aux p').
 
 Definition accessibles_st (x : node) : Streams.Stream (list path) := accessibles_aux (PUnit x :: nil).
 

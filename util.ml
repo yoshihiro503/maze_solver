@@ -1,5 +1,6 @@
 let (@@) f x = f x
 let ($) g f x = g (f x)
+let (!%) = Printf.sprintf
 
 let si = string_of_int
 let string1 = String.make 1
