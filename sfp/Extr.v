@@ -28,8 +28,8 @@ Extract Inductive option => "option" ["Some" "None" ].
 Extract Constant maze => "Maze.t".
 Extract Constant node => "Maze.node".
 Extract Constant next => "Maze.next".
-Extract Constant node_dec => "(=)".
-Extract Constant node_dec2 => "Maze.node_dec".
+Extract Constant node_dec => "Maze.node_dec".
+Extract Constant node_dec2 => "Maze.node_dec2".
 Extract Constant start => "Maze.start".
 Extract Constant goal  => "Maze.goal".
 
