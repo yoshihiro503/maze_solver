@@ -73,3 +73,14 @@ let read_all ch =
     | End_of_file -> List.rev store
   in
   iter []
+
+let memoise (f : 'a -> 'b) =
+  let tbl : ('a, 'b) Hashtbl.t = Hashtbl.create 100 in
+  fun x ->
+    if Hashtbl.mem tbl x then
+      Hashtbl.find tbl x
+    else
+      let y = f x in
+      Hashtbl.add tbl x y;
+      y
+
