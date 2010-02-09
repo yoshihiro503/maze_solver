@@ -2,18 +2,19 @@ open Util
 open JSON
 open Wget
 
-type node = {uid:string; }
+type node = string
 type t = { id: string; pass: string; start: node; goal: node}
 
-let snode node = !%"%s"  node.uid
+let snode node = !%"%s" node
 
 let pnode s = 
-  { uid=s }
+  s
 
 let node_dec n1 n2 =
-  n1.uid=n2.uid
+(*  n1.uid=n2.uid*)
+  n1=n2
 let node_dec2 n1 n2 =
-  print_endline (!%"node_dec '%s' '%s' : %b" n1.uid n2.uid (n1=n2));
+(*  print_endline (!%"node_dec '%s' '%s' : %b" n1.uid n2.uid (n1=n2));*)
   node_dec n1 n2
 
 
@@ -53,7 +54,7 @@ let wget ?(user="") ?(password="") url : string =
 let twitter (twid,ps) cmd =
   let url = "twitter.com/" ^ cmd in
   puts "sleep:";
-  Unix.sleep 3;
+  Unix.sleep 1;
   JSON.parse (Wget.wget ~user:twid ~password:ps url)
 
 let json_as_int64 : JSON.t -> string =
@@ -69,7 +70,14 @@ let profile_of_id acc idorname =
 
 let node_of_name acc name =
   let uid, _ = profile_of_id acc name in
-  {uid = uid }
+  uid
+
+module S = Set.Make (struct
+  type t = node
+  let compare = String.compare
+end)
+let list_of_s set =
+  S.fold (fun x xs -> x::xs) set []
 
 (*let mergex x xs =
   let rec iter store = function
@@ -79,24 +87,31 @@ let node_of_name acc name =
   in
   iter l2 l1*)
 let mergex x xs =
-  x :: List.filter (fun y -> x<>y) xs
+(*  x :: List.filter (fun y -> x<>y) xs*)
+(*  if List.mem x xs then xs
+  else x :: xs*)
+  S.add x xs
+
+let count = ref 0
 
 let friends m node : node list =
   let rec loop total cursor =
-    let cmd = !%"friends/ids/%s.json?cursor=%s" node.uid cursor in
+    puts (!%"friendsloop:total:%d" !count);
+    incr count;
+    let cmd = !%"friends/ids/%s.json?cursor=%s" node cursor in
     let r = twitter (m.id,m.pass) cmd in
     let total' =
-      List.fold_left (fun store j -> mergex ({uid=json_as_int64 j}) store)
-	[]
+      List.fold_left (fun store j -> mergex (json_as_int64 j) store)
+	total
 	(JSON.getf "ids" r +> JSON.as_list)
     in
     let next_cursor =
       JSON.getf "next_cursor_str" r +> JSON.as_string
     in
-    if next_cursor = "0" then total'
+    if next_cursor = "0" then list_of_s total'
     else loop (total') (next_cursor)
   in
-  loop [] "-1"
+  loop S.empty "-1"
 
 
 
@@ -125,7 +140,7 @@ let goal : node
 let next : node -> node list 
     = fun node ->
       let fs = friends m node in
-      puts (!%"next(%s) = [%s]" node.uid (slist "," snode fs));
+      puts (!%"next(%s) = [%s]" node (slist "," snode fs));
       fs
 
 let nmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
@@ -145,13 +160,13 @@ let nmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
 let delim = Str.regexp " "
 
 let validator acc node nextnodes =
-  let _, fc = profile_of_id acc node.uid in
+  let _, fc = profile_of_id acc node in
   let r = (fc = List.length nextnodes) in
   if not r then puts (!%"validatorFalse!:%s" (snode node));
   r
     
 let next = nmemoise next "tbl01"
-    (fun key -> key.uid)
+    (fun key -> key)
     (fun ss -> !%"%d %s" (List.length ss) @@ slist " " snode ss)
     (fun s ->
       match Str.split delim s with
