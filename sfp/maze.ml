@@ -60,8 +60,12 @@ module S = Set.Make (struct
   type t = node
   let compare = String.compare
 end)
-let list_of_s set =
+let list_of_set set =
   S.fold (fun x xs -> x::xs) set []
+let set_of_list xs =
+  List.fold_left (fun set x -> S.add x set) S.empty xs
+let set_length s =
+  S.fold (fun _ n -> succ n) s 0
 
 let mergex x xs =
 (*  x :: List.filter (fun y -> x<>y) xs*)
@@ -71,9 +75,9 @@ let mergex x xs =
 
 let count = ref 0
 
-let friends m node : node list =
+let friends m node =
   let rec loop total cursor =
-    puts (!%"friendsloop:total:%d" !count);
+    puts (!%"friendsloop:total:%d\n" !count);
     incr count;
     let cmd = !%"friends/ids/%s.json?cursor=%s" node cursor in
     let r = twitter (m.id,m.pass) cmd in
@@ -85,7 +89,7 @@ let friends m node : node list =
     let next_cursor =
       JSON.getf "next_cursor_str" r +> JSON.as_string
     in
-    if next_cursor = "0" then list_of_s total'
+    if next_cursor = "0" then total'
     else loop (total') (next_cursor)
   in
   loop S.empty "-1"
@@ -101,7 +105,7 @@ let parse_input () =
   prerr_string "target: @"; flush stderr;
   let gl_name = read_line() in
   prerr_endline "";
-  puts (!%"input: @%s ->...-> @%s" st_name gl_name);
+  puts (!%"input: @%s ->...-> @%s\n" st_name gl_name);
   let gl = node_of_name (twid,ps) gl_name in
   let st = node_of_name (twid,ps) st_name in 
   { id=twid; pass=ps; start=st; goal=gl }
@@ -113,10 +117,10 @@ let goal : node
     = m.goal
 
 
-let next : node -> node list 
+let next
     = fun node ->
       let fs = friends m node in
-      puts (!%"next(%s) = [%s]" node (slist "," snode fs));
+      puts (!%"next(%s) = [%s]" node (slist "," snode @@ list_of_set fs));
       fs
 
 (*let netmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
@@ -138,8 +142,9 @@ let delim = Str.regexp " "
 
 let validator acc node nextnodes =
   let _, fc = profile_of_id acc node in
-  let r = (fc = List.length nextnodes) in
-  if not r then puts (!%"validatorFalse!:%s" (snode node));
+  let n = set_length nextnodes in
+  let r = (fc = n) in
+  if not r then puts (!%"validatorFalse!:%s (%d <> %d)\n" (snode node) fc n);
   r
     
 let next = Netshash.nmemoise next "tbl03"
@@ -147,12 +152,9 @@ let next = Netshash.nmemoise next "tbl03"
     (fun s -> s)
     (fun s -> s)
     (validator (m.id,m.pass))
+    set_of_list
+    S.iter
 
-(*let next n =
- try
-    memoise next n
-  with
-  | e -> print_endline ("ERR:" ^ Printexc.to_string e);
-      []
-*)
 let next = memoise next
+
+let next x = list_of_set (next x)

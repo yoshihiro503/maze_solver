@@ -8,7 +8,7 @@ let const c = fun _ -> c
 let (!%) = Printf.sprintf
 let (!$) x = Lazy.force x
 
-let puts s = print_endline s; prerr_endline s
+let puts s = print_string s; prerr_string s
 
 let si = string_of_int
 let string1 = String.make 1
@@ -78,10 +78,8 @@ let memoise (f : 'a -> 'b) =
   let tbl : ('a, 'b) Hashtbl.t = Hashtbl.create 100 in
   fun x ->
     if Hashtbl.mem tbl x then begin
-      puts ("memoise:FOUND:" ^ x);
       Hashtbl.find tbl x
     end else begin
-      puts ("memoise:NOTFOUND add:" ^ x);
       let y = f x in
       Hashtbl.add tbl x y;
       y
