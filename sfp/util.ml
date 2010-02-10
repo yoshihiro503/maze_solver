@@ -77,10 +77,12 @@ let read_all ch =
 let memoise (f : 'a -> 'b) =
   let tbl : ('a, 'b) Hashtbl.t = Hashtbl.create 100 in
   fun x ->
-    if Hashtbl.mem tbl x then
+    if Hashtbl.mem tbl x then begin
+      puts ("memoise:FOUND:" ^ x);
       Hashtbl.find tbl x
-    else
+    end else begin
+      puts ("memoise:NOTFOUND add:" ^ x);
       let y = f x in
       Hashtbl.add tbl x y;
       y
-
+    end

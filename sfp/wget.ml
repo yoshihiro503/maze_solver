@@ -15,7 +15,8 @@ let wget_with ?(user="") ?(password="") ?(postdata="") (url:string) (f: in_chann
     !%"wget %s %s %s \'%s\' -O -" o_user o_pass o_post url
   in
   puts (!%"wget:%s" query);
-  Unix.sleep 1;
+(*  Unix.sleep 1;*)
+  Thread.delay 0.1;
   let ch = Unix.open_process_in query in
   try
     let r = f ch in

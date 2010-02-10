@@ -11,7 +11,6 @@ let pnode s =
   s
 
 let node_dec n1 n2 =
-(*  n1.uid=n2.uid*)
   n1=n2
 let node_dec2 n1 n2 =
 (*  print_endline (!%"node_dec '%s' '%s' : %b" n1.uid n2.uid (n1=n2));*)
@@ -35,26 +34,11 @@ let wget ?(user="") ?(password="") url : string =
   slist "\n" id lines
 *)
 
-(*let node_of_obj obj =
-(*  let fc = JSON.getf "friends_count" obj +> as_int in*)
-  let id = JSON.getf "id" obj +> as_float
-      +> Int64.of_float +> Int64.to_string in
-  { uid=id; (*f_count=fc*) }*)
-
-(*let node_of_name name =
-  let url =
-    !%"http://twitter.com/statuses/user_timeline.json?screen_name=%s&count=1" name
-  in
-  Unix.sleep 30;
-  JSON.parse (Wget.wget url)
-    +> (List.hd $ JSON.as_list)
-    +> JSON.getf "user"
-    +> node_of_obj*)
 
 let twitter (twid,ps) cmd =
   let url = "twitter.com/" ^ cmd in
   puts "sleep:";
-  Unix.sleep 1;
+  Unix.sleep 3;
   JSON.parse (Wget.wget ~user:twid ~password:ps url)
 
 let json_as_int64 : JSON.t -> string =
@@ -79,13 +63,6 @@ end)
 let list_of_s set =
   S.fold (fun x xs -> x::xs) set []
 
-(*let mergex x xs =
-  let rec iter store = function
-    | [] -> store
-    | x::xs -> iter
-	  (if List.mem x store then store else x :: store) xs
-  in
-  iter l2 l1*)
 let mergex x xs =
 (*  x :: List.filter (fun y -> x<>y) xs*)
 (*  if List.mem x xs then xs
@@ -112,7 +89,6 @@ let friends m node : node list =
     else loop (total') (next_cursor)
   in
   loop S.empty "-1"
-
 
 
 let parse_input () =
@@ -143,17 +119,18 @@ let next : node -> node list
       puts (!%"next(%s) = [%s]" node (slist "," snode fs));
       fs
 
-let nmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
+(*let netmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
   let tbl : ('b) Netshash.t =
     Netshash.create tblid serialize deserialize
   in
   fun x ->
     match Netshash.get tbl (skey x) with
-    | Some (_, y) -> y
+    | Some (_, y) when rvalidator x y -> y
+    | Some (_, y) ->
     | None ->
 	let y = f x in
 	if rvalidator x y then Netshash.add tbl (skey x) y;
-	y
+	y*)
 
 
 
@@ -165,19 +142,17 @@ let validator acc node nextnodes =
   if not r then puts (!%"validatorFalse!:%s" (snode node));
   r
     
-let next = nmemoise next "tbl01"
+let next = Netshash.nmemoise next "tbl03"
     (fun key -> key)
-    (fun ss -> !%"%d %s" (List.length ss) @@ slist " " snode ss)
-    (fun s ->
-      match Str.split delim s with
-      | n :: ss -> List.map pnode ss
-      | [] -> failwith "mustnothappen")
+    (fun s -> s)
+    (fun s -> s)
     (validator (m.id,m.pass))
 
-let next n =
-  try
+(*let next n =
+ try
     memoise next n
   with
   | e -> print_endline ("ERR:" ^ Printexc.to_string e);
       []
-
+*)
+let next = memoise next
