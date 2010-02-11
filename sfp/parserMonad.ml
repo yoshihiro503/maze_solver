@@ -2,16 +2,26 @@ open Util
 open Llist
 
 type ts = char llist
-type error = string
 type state = int * int
+type error = state * string
 type 'a parser = state -> ts -> ('a * state * ts, error) either
-let eplus = (^)
+let lt_pos (l1,p1) (l2,p2) =
+  if l1 < l2 then true
+  else if l1 = l2 then p1 < p2
+  else false
+
+let eplus (st1,msg1) (st2,msg2) =
+  if lt_pos st1 st2 then (st2,msg2) else (st1,msg1)
+
+let showerr ((line,pos),msg) =
+  !%"[line %d, %d: %s]"line pos msg
     
 let return : 'a -> 'a parser =
     fun x ->
       fun state code -> Inl (x, state, code)
 
-let error msg = fun (line, pos) _code -> Inr (!%"line%d, %d: %s"line pos msg)
+
+let error msg = fun state _code -> Inr (state, msg)
 
 let (>>=) : 'a parser -> ('a -> 'b parser) -> 'b parser =
     fun p f ->
@@ -67,7 +77,7 @@ let opt : 'a parser -> ('a option) parser =
 
 
 let char1 state = function
-  | Nil -> Inr "(char1:nil)"
+  | Nil -> Inr (state,"(Nil)")
   | Cons (x,xs) ->
       match x, state with
 	| _, (line,pos) ->
@@ -103,7 +113,7 @@ let int =
 let run p state ts =
   match p state ts with
   | Inl (x,state',xs) -> x
-  | Inr err -> failwith ("ERROR:"^err)
+  | Inr err -> failwith ("ERROR:"^(showerr err))
 
 let init_state = (1, 0)
 

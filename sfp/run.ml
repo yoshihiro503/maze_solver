@@ -11,7 +11,7 @@ let rec path_foldleft f y = function
   | PCons (x,p) -> path_foldleft f (f y x) p
 
 let string_of_path m path =
-  slist " -> " snode (path_foldleft (fun store n -> n :: store) [] path)
+  slist " -> " shownode (path_foldleft (fun store n -> n :: store) [] path)
 (*  path_iter (fun node -> print_string (!%" - %s" (snode node))) path;
   ""*)
 

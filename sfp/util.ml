@@ -8,11 +8,19 @@ let const c = fun _ -> c
 let (!%) = Printf.sprintf
 let (!$) x = Lazy.force x
 
-let puts s = print_string s; prerr_string s
+let puts s = print_string s; prerr_string s; flush stdout; flush stderr
 
 let si = string_of_int
 let string1 = String.make 1
 let slist delim f xs = String.concat delim @@ List.map f xs
+
+let list_take n xs =
+  let rec iter store = function
+    | _,[] -> store
+    | 0,_ -> store
+    | k, x::xs -> iter (x::store) (k-1,xs)
+  in
+  List.rev @@ iter [] (n,xs)
 
 type ('l, 'r) either = Inl of 'l | Inr of 'r
 

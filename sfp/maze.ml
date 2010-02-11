@@ -37,23 +37,24 @@ let wget ?(user="") ?(password="") url : string =
 
 let twitter (twid,ps) cmd =
   let url = "twitter.com/" ^ cmd in
-  puts "sleep:";
-  Unix.sleep 3;
+  prerr_endline "sleep:";
+  Unix.sleep 25;
   JSON.parse (Wget.wget ~user:twid ~password:ps url)
 
 let json_as_int64 : JSON.t -> string =
   Int64.to_string $ Int64.of_float $ JSON.as_float
 
-let profile_of_id acc idorname =
+let profile_of_id acc idorname = (*TODO*)
   let u =
     twitter acc (!%"users/show/%s.json" idorname)
   in
   let fc = JSON.getf "friends_count" u +> JSON.as_int in
   let uid = JSON.getf "id" u +> json_as_int64 in
-  (uid, fc)
+  let name = JSON.getf "screen_name" u +> JSON.as_string in
+  (name, uid, fc)
 
 let node_of_name acc name =
-  let uid, _ = profile_of_id acc name in
+  let _, uid, _ = profile_of_id acc name in
   uid
 
 module S = Set.Make (struct
@@ -68,9 +69,6 @@ let set_length s =
   S.fold (fun _ n -> succ n) s 0
 
 let mergex x xs =
-(*  x :: List.filter (fun y -> x<>y) xs*)
-(*  if List.mem x xs then xs
-  else x :: xs*)
   S.add x xs
 
 let count = ref 0
@@ -116,11 +114,14 @@ let start : node
 let goal : node
     = m.goal
 
+let shownode node =
+  let (name,uid,_) = profile_of_id (m.id,m.pass) node in
+  !%"[%s:%s]" name uid
 
 let next
     = fun node ->
       let fs = friends m node in
-      puts (!%"next(%s) = [%s]" node (slist "," snode @@ list_of_set fs));
+      puts (!%"next(%s) = {%s}\n" node (slist "," snode @@ list_of_set fs));
       fs
 
 (*let netmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
@@ -140,21 +141,41 @@ let next
 
 let delim = Str.regexp " "
 
-let validator acc node nextnodes =
-  let _, fc = profile_of_id acc node in
+let xvalid acc node nextnodes =
+  let name,_, fc = profile_of_id acc node in
   let n = set_length nextnodes in
-  let r = (fc = n) in
-  if not r then puts (!%"validatorFalse!:%s (%d <> %d)\n" (snode node) fc n);
+  if fc<>n then puts (!%"Xvalid NotEq!:%s(%s) (%d <> %d)\n" name (snode node) fc n);
+  (fc <= n)
+
+let xvalid_fast acc node nextnodes =
+  S.is_empty nextnodes = false
+
+let yvalid store y =
+  let r = S.mem y store in
+(*  puts (!%"Yvalid:len=%d %s ismem?: %b" (set_length store) y r);*)
+  not r
+
+let ysvalid store ys =
+  let r = S.subset ys store in
+(*  if not r then puts (!%"YSvalidFalse!: notSubst\n");*)
   r
-    
+
 let next = Netshash.nmemoise next "tbl03"
     (fun key -> key)
     (fun s -> s)
     (fun s -> s)
-    (validator (m.id,m.pass))
+    (xvalid_fast (m.id,m.pass))
+    (yvalid)
+    ysvalid
     set_of_list
     S.iter
+    
 
 let next = memoise next
 
-let next x = list_of_set (next x)
+let next x =
+  try
+    list_of_set (next x)
+  with
+  | e -> puts (!%"Err:[%s]" (Printexc.to_string e));
+      []

@@ -90,6 +90,7 @@ let nmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
 	y
 *)
 
+(*
 let nmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator oflist each =
   let tbl =
     create tblid serialize deserialize
@@ -104,5 +105,25 @@ let nmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator oflist e
 	  delete tbl (skey x);
 	  each (fun y -> add tbl (skey x) y) ys;
 	  ys
+	end
+*)
+
+let nmemoise (f :'a -> 'b) tblid skey serialize deserialize xvalidator yvalidator ysvalid oflist each =
+  let tbl =
+    create tblid serialize deserialize
+  in
+  fun x ->
+    match get tbl (skey x) with
+    | dys ->
+	let ys = List.map (fun (_,y) -> y) dys +> oflist in
+	if xvalidator x ys then ys
+	else begin
+	  let newys = f x in
+(*	  if isempty ys = false then delete tbl (skey x);*)
+	  puts"ADDs:";
+	  (if not @@ ysvalid ys newys then
+	    each (fun y -> if yvalidator ys y then add tbl (skey x) y) newys);
+	  puts"\n";
+	  newys
 	end
 
