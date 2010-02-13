@@ -29,11 +29,11 @@ let add_data t k v =
 let rec add_data_repeet n t k v =
   if n > 0 then
     if add_data t k v = false then
-      (Unix.sleep 3; add_data_repeet (n-1) t k v)
+      (puts"-repeet-"; Unix.sleep 3; add_data_repeet (n-1) t k v)
 	
 
 let get_data t k =
-  puts (!%"get_data:%s\n" k);
+  puts (!%"get %s(%s)\n" t.tbl_id k);
   let read ch =
     let rec iter store start =
       try
@@ -66,7 +66,9 @@ let get t k =
 	  (date, t.value_of_string body) :: store
       | [key; date] ->
 	  (date, t.value_of_string "") :: store
-      | _ -> store
+      | _ ->
+	  puts (!%"get parse Err: line: %s\n" line);
+	  store
     with
     | e -> store
   in
@@ -76,19 +78,20 @@ let add t k v = add_data_repeet limit t k v
 
 let delete t k = delete_data t k
 
-(*
-let nmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
-  let tbl : ('b) Netshash.t =
-    Netshash.create tblid serialize deserialize
+
+let memoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
+  let tbl : ('b) t =
+    create tblid serialize deserialize
   in
   fun x ->
-    match Netshash.get tbl (skey x) with
-    | Some (_, y) -> y
-    | None ->
+    match get tbl (skey x) with
+    | (_, y)::_ -> puts"(found)"; y
+    | [] ->
+	puts "(not found)";
 	let y = f x in
-	if rvalidator x y then Netshash.add tbl (skey x) y;
+	if rvalidator x y then add tbl (skey x) y;
 	y
-*)
+
 
 (*
 let nmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator oflist each =

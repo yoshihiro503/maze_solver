@@ -84,11 +84,14 @@ let read_all ch =
 
 let memoise (f : 'a -> 'b) =
   let tbl : ('a, 'b) Hashtbl.t = Hashtbl.create 100 in
+  let counter = ref 0 in
   fun x ->
+    let st = Gc.stat () in
+    puts (!%"mem(%d,%d)-" st.Gc.live_words st.Gc.heap_words);
     if Hashtbl.mem tbl x then begin
       Hashtbl.find tbl x
     end else begin
       let y = f x in
-      Hashtbl.add tbl x y;
+      if !counter < 700 then (incr counter; puts (!%"HASH(%d)!\n" !counter); Hashtbl.add tbl x y);
       y
     end

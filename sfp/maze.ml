@@ -2,10 +2,10 @@ open Util
 open JSON
 open Wget
 
-type node = string
+type node = int
 type t = { id: string; pass: string; start: node; goal: node}
 
-let snode node = !%"%s" node
+let snode node = !%"%d" node
 
 let pnode s = 
   s
@@ -38,28 +38,57 @@ let wget ?(user="") ?(password="") url : string =
 let twitter (twid,ps) cmd =
   let url = "twitter.com/" ^ cmd in
   prerr_endline "sleep:";
-  Unix.sleep 25;
+  Unix.sleep 5;
   JSON.parse (Wget.wget ~user:twid ~password:ps url)
 
-let json_as_int64 : JSON.t -> string =
-  Int64.to_string $ Int64.of_float $ JSON.as_float
+(*let json_as_int64 : JSON.t -> string =
+  Int64.to_string $ Int64.of_float $ JSON.as_float*)
 
-let profile_of_id acc idorname = (*TODO*)
-  let u =
-    twitter acc (!%"users/show/%s.json" idorname)
-  in
+let profile_of_user u =
   let fc = JSON.getf "friends_count" u +> JSON.as_int in
-  let uid = JSON.getf "id" u +> json_as_int64 in
+  let uid = JSON.getf "id" u +> JSON.as_int in
   let name = JSON.getf "screen_name" u +> JSON.as_string in
-  (name, uid, fc)
+  let tzone = JSON.getf "time_zone" u +> JSON.as_string in
+  (name, uid, fc, tzone)
+
+let profile_of_id acc id =
+  profile_of_user @@
+    twitter acc (!%"users/show.json?user_id=%d" id)
+
+let semi = (Str.regexp ":")
+let profile_of_id acc =
+  Netshash.memoise (profile_of_id acc) "profs"
+    string_of_int
+    (fun (name,uid,fc,tzone) -> !%"%s:%d:%d:%s" name uid fc tzone)
+    (fun s ->
+      match Str.split semi s with
+      | [name;suid;sfc;tzone] -> name, int_of_string suid, int_of_string sfc, tzone
+      | _ -> failwith (!%"ProfMemoErr:%s" s))
+    (fun _ _ -> true)
+
+let profile_of_name acc name =
+  profile_of_user @@
+    twitter acc (!%"users/show.json?screen_name=%s" name)
 
 let node_of_name acc name =
-  let _, uid, _ = profile_of_id acc name in
+  let _, uid, _,_ = profile_of_name acc name in
   uid
+
+let is_jp acc uid =
+  try
+  match profile_of_id acc uid with
+  | _,_,_,"Tokyo" -> true
+  | _,_,_,"Osaka" -> true
+  | _,_,_,"Sapporo" -> true
+  | _,_,_,tzone -> 
+      puts (!%"FOREIGN'%s'\n" tzone);
+      false
+  with
+  | e -> puts "isJPErr\n"; false
 
 module S = Set.Make (struct
   type t = node
-  let compare = String.compare
+  let compare (x:int) (y:int) = compare (x:int) y
 end)
 let list_of_set set =
   S.fold (fun x xs -> x::xs) set []
@@ -71,16 +100,12 @@ let set_length s =
 let mergex x xs =
   S.add x xs
 
-let count = ref 0
-
 let friends m node =
   let rec loop total cursor =
-    puts (!%"friendsloop:total:%d\n" !count);
-    incr count;
-    let cmd = !%"friends/ids/%s.json?cursor=%s" node cursor in
+    let cmd = !%"friends/ids/%d.json?cursor=%s" node cursor in
     let r = twitter (m.id,m.pass) cmd in
     let total' =
-      List.fold_left (fun store j -> mergex (json_as_int64 j) store)
+      List.fold_left (fun store j -> mergex (JSON.as_int j) store)
 	total
 	(JSON.getf "ids" r +> JSON.as_list)
     in
@@ -90,7 +115,11 @@ let friends m node =
     if next_cursor = "0" then total'
     else loop (total') (next_cursor)
   in
-  loop S.empty "-1"
+  let r0 = (loop S.empty "-1") in
+(*  let r = S.filter (is_jp(m.id,m.pass)) r0 in
+  puts (!%"[%d =JP=> %d]\n" (set_length r0) (set_length r));*)
+  puts (!%"%ds friends(%d)! " node (set_length r0));
+  r0
 
 
 let parse_input () =
@@ -115,13 +144,13 @@ let goal : node
     = m.goal
 
 let shownode node =
-  let (name,uid,_) = profile_of_id (m.id,m.pass) node in
-  !%"[%s:%s]" name uid
+  let (name,uid,_,_) = profile_of_id (m.id,m.pass) node in
+  !%"[%s:%d]" name uid
 
 let next
     = fun node ->
       let fs = friends m node in
-      puts (!%"next(%s) = {%s}\n" node (slist "," snode @@ list_of_set fs));
+      puts (!%"next(%d) = {%s}\n" node (slist "," snode @@ list_of_set fs));
       fs
 
 (*let netmemoise (f : 'a -> 'b) tblid skey serialize deserialize rvalidator =
@@ -142,35 +171,37 @@ let next
 let delim = Str.regexp " "
 
 let xvalid acc node nextnodes =
-  let name,_, fc = profile_of_id acc node in
+  try
+  let name,_, fc,_ = profile_of_id acc node in
   let n = set_length nextnodes in
   if fc<>n then puts (!%"Xvalid NotEq!:%s(%s) (%d <> %d)\n" name (snode node) fc n);
   (fc <= n)
+  with
+  | e -> puts (!%"XValudErr(%d): %s" node (Printexc.to_string e)); true
+(*let xvalid_fast acc node nextnodes =
+  S.is_empty nextnodes = false*)
 
-let xvalid_fast acc node nextnodes =
-  S.is_empty nextnodes = false
-
-let yvalid store y =
+let yvalid store (y: node) =
   let r = S.mem y store in
-(*  puts (!%"Yvalid:len=%d %s ismem?: %b" (set_length store) y r);*)
   not r
+
 
 let ysvalid store ys =
   let r = S.subset ys store in
 (*  if not r then puts (!%"YSvalidFalse!: notSubst\n");*)
   r
 
-let next = Netshash.nmemoise next "tbl03"
-    (fun key -> key)
-    (fun s -> s)
-    (fun s -> s)
-    (xvalid_fast (m.id,m.pass))
+let next = Netshash.nmemoise next "tbl04"
+    (fun key -> si key)
+    (fun n -> si n)
+    (fun s -> int_of_string s)
+    (xvalid (m.id,m.pass))
     (yvalid)
     ysvalid
     set_of_list
     S.iter
     
-
+let next x = S.filter (is_jp (m.id,m.pass)) @@ next x
 let next = memoise next
 
 let next x =
