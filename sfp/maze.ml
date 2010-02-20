@@ -38,7 +38,7 @@ let wget ?(user="") ?(password="") url : string =
 let twitter (twid,ps) cmd =
   let url = "twitter.com/" ^ cmd in
   prerr_endline "sleep:";
-  Unix.sleep 5;
+  Unix.sleep 25;
   JSON.parse (Wget.wget ~user:twid ~password:ps url)
 
 (*let json_as_int64 : JSON.t -> string =
