@@ -5,7 +5,7 @@ Require Import Sumbool.
 Parameters maze node : Set.
 Parameter node_dec : forall (x y: node), {x = y} + {x <> y}.
 Parameters start goal : node.
-Parameter next : node -> list node.
+Parameters next : node -> list node.
 Definition is_next y x := In y (next x).
 
 
