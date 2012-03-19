@@ -6,17 +6,15 @@ let rec path_iter f = function
   | PUnit x -> f x
   | PCons (x, p) -> f x; path_iter f p
 
-let string_of_path m path =
-  let r = Array.copy m in
+let show path =
+  let r = Array.copy maze in
   path_iter (fun idx -> if get r idx = ' ' then set r idx '$') path;
-  smatrix string1 r
+  print_endline @@ smatrix string1 r
 
 let _ =
-  let rec loop i gs =
-    match gs with
-    | lazy (Cons ([], xs)) ->
-	loop (i+1) xs
-    | lazy (Cons (p::_, xs)) ->
-	print_endline @@ string_of_path m p
+  let rec take1 = function
+    | lazy (Cons ([], ps)) -> take1 ps
+    | lazy (Cons (p::_, _)) -> p
   in
-  loop 0 Solver.goals
+  show (take1 Solver.goals)
+

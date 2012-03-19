@@ -13,7 +13,7 @@ type t = char array array
 type node = int * int
 
 let snode (i,j) = "("^si i^","^si j^")"
-let m = parse_input ()
+let maze = parse_input ()
 let get : t -> node -> char
     = fun m (i,j) -> m.(j).(i)
 let set : t -> node -> char -> unit
@@ -21,12 +21,12 @@ let set : t -> node -> char -> unit
 let sidx (i,j) =
   si i ^ "," ^ si j
 
-let width, height = (Array.length m.(0), Array.length m)
+let width, height = (Array.length maze.(0), Array.length maze)
     
 let start : node
-    = matrix_find_idx ((=) 'S') m
+    = matrix_find_idx ((=) 'S') maze
 let goal : node
-    = matrix_find_idx ((=) 'G') m
+    = matrix_find_idx ((=) 'G') maze
 
 let next : node -> node list 
     = fun (i,j) ->
@@ -36,7 +36,6 @@ let next : node -> node list
 	with
 	  e -> print_endline ("avail"^ si x ^"," ^si y); raise e
       in	
-      List.filter (avail m)
+      List.filter (avail maze)
       [(i-1,j); (i,j-1); (i+1,j); (i,j+1)]
-
 

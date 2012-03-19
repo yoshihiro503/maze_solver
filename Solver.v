@@ -148,15 +148,14 @@ Qed.
 
 Require Streams.
 CoFixpoint from n := Streams.Cons n (from (S n)).
-(*Definition goals := Streams.map goals_len (from 0).*)
+Definition goals := Streams.map goals_len (from 0).
 
 
 
 
 
 
-
-
+(*
 CoFixpoint accessibles_aux (p : list path) : Streams.Stream (list path) :=
     let p' := div_equiv path_equiv_dec @@ (flat_map expand p) in
     Streams.Cons p' (accessibles_aux p').
@@ -165,3 +164,4 @@ Definition accessibles_st (x : node) : Streams.Stream (list path) := accessibles
 
 Definition goals :=
   Streams.map (filter_dec (fun p => node_dec goal (endof p))) @@ accessibles_st start.
+*)
