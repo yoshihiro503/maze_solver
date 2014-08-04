@@ -2,6 +2,8 @@ syntax: glob
 *~
 *.glob
 *.vo
+*.cm[ioxa]
+*.o
 solver.ml
 solver.mli
 run
