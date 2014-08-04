@@ -1,0 +1,20 @@
+Maze Solver Using Coq
+=====================
+
+## Requirement
+
+- OCaml
+- Coq
+
+## Build
+
+$ ./compile.sh
+
+## Usage
+
+$ ./run < input.txt
+
+## References
+
+- http://yosh.hateblo.jp/entry/20100119/p1
+- http://okajima.air-nifty.com/b/2010/01/post-abc6.html
