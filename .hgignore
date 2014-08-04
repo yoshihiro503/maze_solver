@@ -1,0 +1,7 @@
+syntax: glob
+*~
+*.glob
+*.vo
+solver.ml
+solver.mli
+run
